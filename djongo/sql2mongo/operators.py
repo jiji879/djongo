@@ -431,6 +431,11 @@ class ParenthesisOp(_Op):
                 link_op()
                 self._op_precedence(op)
 
+            elif tok.match(tokens.Keyword, 'SEARCH'):
+                op = SearchOp(**kw)
+                link_op()
+                self._op_precedence(op)
+
             elif tok.match(tokens.Keyword, 'BETWEEN'):
                 op = BetweenOp(**kw)
                 link_op()
@@ -535,6 +540,18 @@ class CmpOp(_Op):
             return {field: {'$not': {self._operator: self._constant}}}
 
 
+class SearchOp(_Op):
+    def __init__(self, *args, **kwargs):
+        super().__init__(name='SEARCH', *args, **kwargs)
+        self._regex = None
+
+    def to_mongo(self):
+        token = self.token.token_next(self._token_id)[1]
+        index = SQLToken.placeholder_index(token)
+        to_match = self.params[index]
+        return {'$text': {'$search': to_match}}
+
+
 OPERATOR_MAP = {
     '=': '$eq',
     '>': '$gt',
@@ -543,6 +560,7 @@ OPERATOR_MAP = {
     '<=': '$lte',
 }
 OPERATOR_PRECEDENCE = {
+    'SEARCH': 9,
     'IS': 8,
     'BETWEEN': 7,
     'LIKE': 6,
